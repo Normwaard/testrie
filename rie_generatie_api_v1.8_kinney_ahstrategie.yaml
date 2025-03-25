@@ -1,0 +1,249 @@
+openapi: 3.1.0
+info:
+  title: RI&E Generatie API
+  version: 1.8.0
+  description: |
+    Versie 1.8 – met:
+    ✅ Volledige Kinney & Wiruth risicoschaal (W, B, E) embedded
+    ✅ Arbeidshygiënische strategie volledig hardcoded: format, niveaus, toelichtingen en standaardteksten
+    ❌ Geen lege sjablonen per hoofdstuktype (op verzoek uitgesloten)
+servers:
+  - url: https://api.rbc-group.nl/v1
+    description: Voorbeeld endpoint voor de RI&E Generatie API
+paths:
+  /generate-rie:
+    post:
+      operationId: generateRie
+      summary: Genereer volledig RI&E-hoofdstuk
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateRieInput'
+      responses:
+        "200":
+          description: RI&E-hoofdstuk succesvol gegenereerd
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateRieOutput'
+
+components:
+  schemas:
+    GenerateRieInput:
+      type: object
+      required:
+        - hoofdstuknummer
+        - onderwerp
+        - risicobeoordeling
+        - inventarisatievragen
+        - mens_en_gedrag
+      properties:
+        hoofdstuknummer:
+          type: string
+        onderwerp:
+          type: string
+        risicobeoordeling:
+          $ref: '#/components/schemas/Risicobeoordeling'
+        brf:
+          type: array
+          items:
+            $ref: '#/components/schemas/BRF'
+        beheersmaatregelen:
+          type: array
+          items:
+            $ref: '#/components/schemas/Maatregel'
+        wetgeving:
+          type: array
+          items:
+            $ref: '#/components/schemas/Wetgeving'
+        pdca:
+          $ref: '#/components/schemas/PDCA'
+        inventarisatievragen:
+          type: array
+          items:
+            $ref: '#/components/schemas/Inventarisatievraag'
+        mens_en_gedrag:
+          type: array
+          items:
+            $ref: '#/components/schemas/Inventarisatievraag'
+        verdiepend_onderzoek:
+          $ref: '#/components/schemas/VerdiependOnderzoek'
+
+    Risicobeoordeling:
+      type: object
+      description: |
+        Risicobeoordeling volgens Kinney & Wiruth:
+        Waarschijnlijkheid (W):
+        - 10: Komt vaak voor binnen ons bedrijf
+        - 6: Komt enkele malen binnen ons bedrijf voor
+        - 3: Is in de laatste jaren weleens voorgekomen
+        - 1: De afgelopen 10 jaar niet in het bedrijf
+        - 0.5: Wel in branche gehoord, niet bij ons
+        - 0.2: Nooit van gehoord binnen de branche
+        - 0.1: Nooit van gehoord
+
+        Blootstellingsfrequentie (B) – Hoe vaak en hoe lang per dag:
+        - 10: Voortdurend (8 uur of meer per dag)
+        - 6: Dagelijks (4–8 uur per dag)
+        - 3: Wekelijks (1–4 uur per dag)
+        - 2: Maandelijks (enkele keren per maand)
+        - 1: Jaarlijks (enkele keren per jaar)
+        - 0.5: Zeer zelden (minder dan 1x per jaar)
+
+        Effect (E) – Ernst van gevolgen:
+        - 100: Catastrofaal – meerdere doden
+        - 40: Meerdere doden
+        - 15: Zeer ernstig – ten minste één dode
+        - 7: Ernstig – onomkeerbaar letsel
+        - 3: Belangrijk letsel – omkeerbaar
+        - 1: Gering letsel – lichte hinder
+      properties:
+        is_risico:
+          type: boolean
+        waarschijnlijkheid:
+          type: number
+        blootstellingsfrequentie:
+          type: number
+        effect:
+          type: number
+        berekening:
+          type: string
+        toelichting:
+          type: string
+        internet_validatie:
+          type: string
+
+    BRF:
+      type: object
+      properties:
+        brf_type:
+          type: string
+        oorzaak:
+          type: string
+        grondoorzaak:
+          type: string
+        categorie:
+          type: string
+          enum: [Mens, Techniek, Organisatie]
+
+    Maatregel:
+      type: object
+      description: |
+        Beheersmaatregelen volgens arbeidshygiënische strategie – in volgorde toepassen:
+        1. Bronaanpak: Eliminatie van risico – nieuwe score = 0
+        2. Collectieve maatregel: Technisch of procesmatig
+        3. Individuele maatregel: Organisatorisch per persoon
+        4. PBM: Alleen als voorgaande niet werken
+        5. Ondersteunende maatregel: Training/instructie
+        6. Gedrag: Afspraken, toezicht en handhaving
+
+        Standaardformat tabel:
+
+        | Plan van aanpak | Beheersmaatregel | Toegepast | Niet toegepast | Kosten (K) | Baten (B) | Nieuwe risicoscore (W × B × E) | Streefdatum & Actiehouder |
+        |------------------|------------------|-----------|----------------|------------|-----------|-------------------------------|----------------------------|
+        | Bronaanpak       | ...              | X         |                | ...        | ...       | 0                             | ...                        |
+        | Collectieve      | ...              | X         |                | ...        | ...       | ...                           | ...                        |
+      properties:
+        niveau:
+          type: string
+          enum: [Bronaanpak, Collectieve maatregel, Individuele maatregel, PBM, Ondersteunende maatregel, Gedrag]
+        maatregel:
+          type: string
+        toegepast:
+          type: boolean
+        kosten:
+          type: string
+        baten:
+          type: string
+        nieuwe_risicoscore:
+          type: object
+          properties:
+            waarschijnlijkheid:
+              type: number
+            blootstellingsfrequentie:
+              type: number
+            effect:
+              type: number
+            berekening:
+              type: string
+        actiehouder:
+          type: string
+        streefdatum:
+          type: string
+        reden_geen_bronaanpak:
+          type: string
+
+    Wetgeving:
+      type: object
+      properties:
+        bron:
+          type: string
+        artikel:
+          type: string
+        compliant:
+          type: boolean
+        regels:
+          type: string
+
+    Inventarisatievraag:
+      type: object
+      properties:
+        vraag:
+          type: string
+        antwoord:
+          type: string
+          enum: [JA, NEE, N.V.T.]
+        toelichting:
+          type: string
+
+    PDCA:
+      type: object
+      properties:
+        plan:
+          type: string
+        do:
+          type: string
+        check:
+          type: string
+        act:
+          type: string
+
+    VerdiependOnderzoek:
+      type: object
+      properties:
+        vereist:
+          type: boolean
+        toelichting:
+          type: string
+
+    GenerateRieOutput:
+      type: object
+      properties:
+        structuur:
+          type: string
+        risicoscore:
+          type: string
+        wetgeving:
+          type: array
+          items:
+            $ref: '#/components/schemas/Wetgeving'
+        onderzoeksmethodiek:
+          type: string
+        inventarisatievragen:
+          type: array
+          items:
+            $ref: '#/components/schemas/Inventarisatievraag'
+        mens_en_gedrag:
+          type: array
+          items:
+            $ref: '#/components/schemas/Inventarisatievraag'
+        oorzaakanalyse:
+          type: string
+        beheersmaatregelen:
+          type: array
+          items:
+            $ref: '#/components/schemas/Maatregel'
+        pdca:
+          $ref: '#/components/schemas/PDCA'
